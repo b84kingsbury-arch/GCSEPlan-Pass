@@ -1,0 +1,8 @@
+{
+  "name": "gcse-plan-and-pass",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@netlify/blobs": "11.1.0"
+  }
+}
