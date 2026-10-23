@@ -1,0 +1,10 @@
+# Netlify settings for GCSE Plan & Pass.
+[build]
+  publish = "site"
+  functions = "netlify/functions"
+  command = "echo 'No build step needed'"
+
+[[headers]]
+  for = "/worksheets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=300"
