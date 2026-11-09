@@ -415,6 +415,7 @@
           <span class="meta">${PLAN.length} blocks · ${Math.floor(mins / 60)} h${mins % 60 ? " " + mins % 60 + " min" : ""}${removed ? ` · ${removed} removed for commitments` : ""}</span>
           <button class="btn" type="button" id="shuffleAll">Shuffle all topics</button>
           <button class="btn" type="button" id="printPlan">Print plan</button>
+          <button class="btn primary-soft" type="button" id="printPack">Print all worksheets</button>
         </div>
       </div>`;
     const balance = PLAN.length ? `<section class="balance" aria-label="Blocks per subject"><h3>Blocks per subject</h3>
@@ -455,6 +456,7 @@
   $("#week").addEventListener("click", e => {
     const t = e.target.closest("button"); if (!t) return;
     if (t.id === "printPlan") return printPlan();
+    if (t.id === "printPack") return openPackDialog();
     if (t.id === "copyCode") return copyCode(t);
     if (t.id === "retryCode") return createCode();
     if (t.id === "shuffleAll") {
@@ -551,21 +553,31 @@
     }
     if (t.id === "wsTimerReset") { WS.left = 1800; WS.running = false; clearInterval(WS.timer); $("#wsTimerBtn").textContent = "Start timer"; tick(); }
     if (t.id === "wsNext") { WS.vi = (WS.vi + 1) % WS.versions.length; WS.b.version = WS.vi; save(); loadVersion(); }
-    if (t.id === "wsPrint") { doPrint(G.printHTML(WS.spec, WS.data), "portrait"); }
+    if (t.id === "wsPrint") { doPrint(withMeasurer(() => fitOnePage(G.printHTML(WS.spec, WS.data))), "portrait"); }
     if (t.dataset.tab) {
       t.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-selected", x === t ? "true" : "false"));
       const scope = t.closest(".paper") || $("#wsBody");
       scope.querySelectorAll(":scope [data-pane]").forEach(p => p.hidden = p.dataset.pane !== t.dataset.tab);
     }
     if (t.id === "recallStart") {
-      $("#reviewContent").hidden = true; $("#recallBox").hidden = false; t.hidden = true; $("#recallText").focus();
+      $("#reviewContent").hidden = true; $("#recallBox").hidden = false; t.hidden = true; $("#recallCheck").focus();
       if (!WS.running) { WS.left = Math.min(WS.left, 15 * 60); $("#wsTimerBtn").click(); }
     }
     if (t.id === "recallCheck") { $("#reviewContent").hidden = false; t.hidden = true; $("#recallNote").hidden = false; }
     if (t.dataset.show !== undefined) { const r = t.closest(".qrow"); r.querySelector(".a").hidden = false; r.querySelector(".mark").hidden = false; t.hidden = true; }
     if (t.dataset.mark) quizMark(t);
     if (t.dataset.retry !== undefined) quizRetry(+t.dataset.retry);
-    if (t.id === "flipBtn") { const ms = $("#markScheme"); ms.hidden = !ms.hidden; t.textContent = ms.hidden ? "Turn over: show the mark scheme" : "Hide the mark scheme"; if (!ms.hidden) ms.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (t.id === "flipBtn") {
+      const ms = $("#markScheme"); ms.hidden = !ms.hidden;
+      const label = t.dataset.flip || "Turn over: show the mark scheme";
+      t.textContent = ms.hidden ? label : (t.dataset.flip ? "Hide the success criteria and model answer" : "Hide the mark scheme");
+      const tot = $("#critTotal"); if (tot) tot.textContent = document.querySelectorAll("[data-crit]").length;
+      if (!ms.hidden) ms.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+  $("#wsRoot").addEventListener("change", e => {
+    if (e.target.dataset.crit === undefined) return;
+    $("#critCount").textContent = document.querySelectorAll("[data-crit]:checked").length;
   });
   $("#wsRoot").addEventListener("input", e => {
     if (e.target.dataset.score === undefined) return;
@@ -704,6 +716,107 @@
     </div>`, "landscape");
   }
   window.addEventListener("afterprint", () => { document.body.classList.remove("print-plan"); });
+
+  /* ---------- Print all worksheets for the week ---------- */
+  const PACK = { duplex: true, cover: true };
+  try { Object.assign(PACK, JSON.parse(localStorage.getItem("gcse-print-pack") || "{}")); } catch (e) {}
+  const packBlocks = () => PLAN.slice().sort((a, b) => a.day - b.day || a.start.localeCompare(b.start));
+  function chosenVersion(b) { const vs = visibleVersions(specFor(b).id); return vs.length ? vs[(b.version || 0) % vs.length] : null; }
+  function openPackDialog() {
+    const blocks = packBlocks(), ready = blocks.filter(chosenVersion), missing = blocks.filter(b => !chosenVersion(b));
+    modal(`<h3>Print all of this week's worksheets</h3>
+      <p class="small">${ready.length} worksheet${ready.length === 1 ? "" : "s"} in timetable order, each starting on a new page${missing.length ? `. ${missing.length} block${missing.length === 1 ? " isn't" : "s aren't"} ready yet and will be listed on the cover so you can swap ${missing.length === 1 ? "it" : "them"} for another topic first.` : "."}</p>
+      <fieldset class="packopts"><legend class="sr">Print options</legend>
+        <label class="toggle"><input type="radio" name="packSides" id="pack-duplex" value="duplex" ${PACK.duplex ? "checked" : ""}> <span><b>Double-sided</b> (recommended, uses the least paper). Review and Quiz worksheets are one page each and print back to back; exam practice always starts on a new sheet. Choose "two-sided" in the print settings.</span></label>
+        <label class="toggle"><input type="radio" name="packSides" id="pack-single" value="single" ${PACK.duplex ? "" : "checked"}> <span><b>Single-sided.</b> One page per side of paper.</span></label>
+        <label class="toggle"><input type="checkbox" id="pack-cover" ${PACK.cover ? "checked" : ""}> <span>Start with a cover sheet listing the week as a checklist</span></label>
+      </fieldset>
+      <p class="small" id="packMsg" aria-live="polite"></p>
+      <div class="row end"><button class="btn" type="button" data-close>Cancel</button><button class="btn primary" type="button" id="packGo" ${ready.length ? "" : "disabled"}>Print ${ready.length} worksheet${ready.length === 1 ? "" : "s"}</button></div>`);
+    $("#packGo").addEventListener("click", async () => {
+      PACK.duplex = $("#pack-duplex").checked; PACK.cover = $("#pack-cover").checked;
+      try { localStorage.setItem("gcse-print-pack", JSON.stringify(PACK)); } catch (e) {}
+      const go = $("#packGo"); go.disabled = true; go.textContent = "Preparing…";
+      try { const html = await buildPack(); closeModal(); doPrint(html, "portrait"); }
+      catch (e) { $("#packMsg").textContent = "Some worksheets couldn't be loaded. Check your connection and try again."; go.disabled = false; go.textContent = "Try again"; }
+    });
+  }
+  async function buildPack() {
+    const blocks = packBlocks();
+    const jobs = blocks.map(async b => {
+      const v = chosenVersion(b); if (!v) return { b, html: null };
+      const r = await fetch("worksheets/" + v.file, { cache: "no-cache" }); if (!r.ok) throw new Error(r.status);
+      const file = await r.json();
+      return { b, html: G.printHTML(specFor(b), file.data) };
+    });
+    const items = await Promise.all(jobs);
+    const sections = [];
+    if (PACK.cover) sections.push({ html: packCover(items), exam: false });
+    for (const it of items) if (it.html) sections.push({ html: `<div class="pk-when">${esc(DAYNAMES[it.b.day])} ${esc(it.b.start)}–${esc(it.b.end)}</div>${it.html}`, exam: it.b.format === "Exam practice" });
+    return withMeasurer(() => layoutPack(sections.map(x => Object.assign(x, { html: fitOnePage(x.html) }))));
+  }
+  function packCover(items) {
+    let lastDay = -1;
+    const rows = items.map(({ b, html }) => {
+      const dayRow = b.day !== lastDay ? `<tr class="pk-day"><td colspan="5">${DAYNAMES[b.day]} ${fmtDate(S.weekStart, b.day)}</td></tr>` : ""; lastDay = b.day;
+      return dayRow + `<tr><td>${esc(b.start)}–${esc(b.end)}</td><td><span class="pk-sw" style="background:var(--${b.subject})"></span>${esc(G.SUBJ[b.subject].name)}</td><td>${esc(b.topic)}${html ? "" : " <i>(not ready yet)</i>"}</td><td>${esc(b.format)}</td><td class="pk-tick"><i></i></td></tr>`;
+    }).join("");
+    const missing = items.filter(x => !x.html);
+    return `<header class="pk-head"><small>GCSE Plan &amp; Pass</small><h1>Revision pack: week of ${fmtDate(S.weekStart, 0)}</h1>
+      <p>${items.length - missing.length} worksheets in timetable order${CODE ? ` · Plan code <b>${fmtCode(CODE)}</b>` : ""}. Tick each one when it's done.</p></header>
+      <table class="pk-table"><thead><tr><th>Time</th><th>Subject</th><th>Topic</th><th>Format</th><th class="pk-tick">Done</th></tr></thead><tbody>${rows}</tbody></table>
+      ${missing.length ? `<p class="pk-missing">${missing.length} worksheet${missing.length === 1 ? " isn't" : "s aren't"} ready yet, so ${missing.length === 1 ? "it isn't" : "they aren't"} in this pack. On the website, use ⟳ or ☰ on ${missing.length === 1 ? "that block" : "those blocks"} to choose another topic.</p>` : ""}`;
+  }
+  // Off-screen copy of the print layout, used to measure page counts before printing.
+  let MEASURER = null;
+  function withMeasurer(fn) {
+    MEASURER = document.createElement("div"); MEASURER.className = "parea"; document.body.appendChild(MEASURER);
+    try { return fn(); } finally { MEASURER.remove(); MEASURER = null; }
+  }
+  // Review and Quiz worksheets must fit on one page: shrink the whole worksheet a little at a time until it does.
+  function fitOnePage(html) {
+    if (!html.includes('class="p-fit"')) return html;
+    const fits = h => { MEASURER.innerHTML = h; const el = MEASURER.querySelector(".p-fit"); return el.getBoundingClientRect().height <= PAGE_H - 24; };
+    if (fits(html)) return html;
+    for (let z = 0.95; z >= 0.6; z -= 0.05) {
+      const out = html.replace('<div class="p-fit">', `<div class="p-fit" style="zoom:${z.toFixed(2)}">`);
+      if (fits(out)) return out;
+    }
+    return html.replace('<div class="p-fit">', '<div class="p-fit" style="zoom:0.6">');
+  }
+  // Double-sided: Review and Quiz sheets (one page each) fill both sides of the paper. Exam practice must
+  // start on the front of a sheet so its mark scheme is never printed on the back of another worksheet,
+  // so a blank page is added before it when needed.
+  const BLANK = `<section class="pk-blank"><p>This page is intentionally blank.</p></section>`;
+  function layoutPack(sections) {
+    if (!PACK.duplex) return sections.map(x => `<div class="pk-sheet">${x.html}</div>`).join("");
+    let pos = 0;
+    return sections.map(x => {
+      let out = "";
+      if (x.exam && pos % 2) { out += `<div class="pk-sheet">${BLANK}</div>`; pos++; }
+      MEASURER.innerHTML = `<div class="pk-measure">${x.html}</div>`;
+      const root = MEASURER.firstElementChild, rev = root.querySelector(".p-reverse"), fit = root.querySelector(".p-fit");
+      const pages = fit ? 1 : rev ? pagesIn(root, root.getBoundingClientRect().top, rev.getBoundingClientRect().top) + pagesIn(rev, rev.getBoundingClientRect().top, rev.getBoundingClientRect().bottom)
+                                  : pagesIn(root, root.getBoundingClientRect().top, root.getBoundingClientRect().bottom);
+      pos += pages;
+      return out + `<div class="pk-sheet">${x.html}</div>`;
+    }).join("");
+  }
+  // Simulate page breaks between y = top and y = bottom: text flows across pages, but blocks the
+  // print styles keep whole (questions, code) move to the next page if they would be split.
+  const PAGE_H = 269 * 96 / 25.4; // A4 height minus 14 mm top and bottom margins, in CSS pixels
+  function pagesIn(scope, top, bottom) {
+    const keep = [...scope.querySelectorAll(".p-q, pre.code")].map(el => el.getBoundingClientRect())
+      .filter(r => r.top >= top && r.bottom <= bottom + 1).map(r => ({ t: r.top - top, b: r.bottom - top })).sort((x, y) => x.t - y.t);
+    const end = bottom - top, slack = 12; // trailing margins and rounding
+    let start = 0, pages = 1;
+    for (const k of keep) {
+      while (k.t - start >= PAGE_H) { start += PAGE_H; pages++; }
+      if (k.b - start > PAGE_H && k.b - k.t <= PAGE_H) { start = k.t; pages++; }
+    }
+    while (end - start > PAGE_H + slack) { start += PAGE_H; pages++; }
+    return pages;
+  }
 
   /* ---------- Boot ---------- */
   $("#buildBtn").addEventListener("click", () => { buildPlan(); $("#stale").hidden = true; CODE = null; save(true); createCode(); renderWeek(); });

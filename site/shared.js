@@ -388,33 +388,55 @@ Specification area: ${w.unit}.
 Topic: ${w.topic}.${extra}
 Student: UK GCSE student revising independently in a 30-minute block.`;
   }
+  // Subjects whose Exam practice reverse side is a student-friendly checklist and model answer instead of an examiner mark scheme.
+  const MODEL_ANSWER_SUBJECTS = ["englang", "englit"];
+  const usesModelAnswers = w => MODEL_ANSWER_SUBJECTS.includes(w.subject);
   function buildPrompt(w) {
     const base = contextLine(w) + "\n" + copyrightRule(w) + "\nUse UK spelling. Write maths with plain-text symbols (x², √, ½, ×, ÷, π, ≤). Do not use LaTeX or Markdown in any string.\n\n";
     if (w.format === "Review") return base +
-`Write a REVIEW worksheet. The student reads the summary for about 8 minutes, covers it, writes down everything they can remember for 15 minutes, then checks and adds missing points in a different colour.
-Make the summary cover exactly what this specification expects at this tier for this topic, about 350 to 450 words, in short sections with clear headings. Include the key facts, processes, equations or formulae, worked examples, quotations or techniques the specification requires.
+`Write a REVIEW worksheet. The student reads the summary for about 8 minutes, covers it, writes down everything they can remember in their exercise book for 15 minutes, then checks and adds missing points in a different colour.
+The whole worksheet (summary, key terms and common mistakes) must fit on one side of A4, so be concise. Make the summary cover the essentials this specification expects at this tier for this topic, about 250 to 300 words, in short sections with clear headings. Include the key facts, processes, equations or formulae, worked examples, quotations or techniques the specification requires.
 Reply with only JSON in this shape:
 {"summary":[{"heading":"...","paragraphs":["..."],"bullets":["..."]}],"key_terms":[{"term":"...","definition":"..."}],"common_mistakes":["..."],"video_search":"a short YouTube search phrase for this exact topic"}
-Use 3 to 5 summary sections, 4 to 8 key terms and 2 to 4 common mistakes.`;
+Use 3 or 4 summary sections, 4 to 6 key terms (definitions under 15 words) and 2 or 3 common mistakes (one line each).`;
     if (w.format === "Quiz") return base +
 `Write a QUIZ worksheet of exactly 20 core recall questions with answers. The student self-quizzes in four sets of five, covering the answers, and repeats any they get wrong.
-Questions must test the facts, definitions, equations, processes, quotations and examples this specification requires for this topic at this tier. Order them from foundational to more demanding. Each answer must be short enough to check at a glance (one line, at most 20 words) and say what an examiner would accept.
+Questions must test the facts, definitions, equations, processes, quotations and examples this specification requires for this topic at this tier. Order them from foundational to more demanding. The whole quiz must fit on one side of A4, so keep each question under 20 words and each answer short enough to check at a glance (at most 12 words), saying what an examiner would accept.
 Reply with only JSON in this shape:
 {"questions":[{"q":"...","a":"..."}]}`;
     return base +
 `Write an EXAM PRACTICE worksheet: original exam-style questions on this topic that read exactly like real ${w.specLabel} questions, with a matching mark scheme. Base the question types, command words (state, describe, explain, calculate, evaluate, compare and so on), mark allocations, stimulus material and mark-scheme wording on this board's real papers and mark schemes, but do not copy any real past-paper question.
 ${w.board === "edexcel" && w.subject !== "maths" ? CONVENTIONS.edexcelOther : CONVENTIONS[w.board]}
 ${timing(w)}
-Questions must be answerable without a diagram. Where data is needed give it as a table; describe any apparatus or shape in words. Where the real exam would print a source text and none is available out of copyright, write an original one and label it as written for this worksheet.
-Reply with only JSON in this shape:
+${w.subject === "compsci" ? "Put any program code or pseudocode in a separate \"code\" field on the question (or on the mark scheme entry for an example answer), keeping its indentation, rather than in the text. " : ""}Questions must be answerable without a diagram. Where data is needed give it as a table; describe any apparatus or shape in words. Where the real exam would print a source text and none is available out of copyright, write an original one and label it as written for this worksheet.
+${usesModelAnswers(w) ? MODEL_ANSWER_BRIEF : `Reply with only JSON in this shape:
 {"timing_note":"one sentence telling the student how to use the 30 minutes","total_marks":0,"sources":[{"label":"Source A","title":"...","text":"..."}],"questions":[{"number":"01.1","text":"...","marks":2,"table":{"headers":["..."],"rows":[["..."]]}}],"mark_scheme":[{"number":"01.1","marks":2,"points":["..."],"guidance":"allow / ignore notes, or the level descriptors and indicative content for extended answers"}]}
-Leave "sources" as [] and "table" as null when not needed. total_marks must equal the sum of the question marks, and every question needs a mark_scheme entry with the same number.`;
+Leave "sources" as [] and "table" as null when not needed. total_marks must equal the sum of the question marks, and every question needs a mark_scheme entry with the same number.`}`;
   }
+  const MODEL_ANSWER_BRIEF = `Instead of an examiner mark scheme, the reverse of this worksheet gives the student a success criteria checklist and a model answer for each question.
+Success criteria: written for students as short "I have…" statements in plain English, based on the board's real level descriptors. Group them in three or four steps from "Every answer should…" up to the top band, with the level and mark range in each heading (for example "To reach the top band (Level 4, 16–20 marks)"). Add a group for spelling, punctuation and grammar where the question awards those marks. Make the criteria specific to this task (name the text, source or focus), not generic.
+Model answer: a full top-band answer to exactly the task set, written as a strong GCSE student could write it in the time allowed, not as a teacher. Where the task asks for a plan and part of an essay, give a short bullet-point plan, then write exactly the parts the student is asked to write, and add one sentence saying what the rest of the full essay would cover. Use short, embedded quotations, taken only from the worksheet's own sources or from out-of-copyright texts. Paragraphs are separated by a blank line. Then give 3 to 5 short commentary points explaining why the answer works, each linked to a success criterion.
+Reply with only JSON in this shape:
+{"timing_note":"one sentence telling the student how to use the 30 minutes","total_marks":0,"sources":[{"label":"Source A","title":"...","text":"..."}],"questions":[{"number":"01","text":"...","marks":20,"table":null}],"success_criteria":[{"number":"01","groups":[{"heading":"Every answer should…","items":["I have …"]}]}],"model_answers":[{"number":"01","plan":["..."],"text":"...","next":"","commentary":["..."]}]}
+Leave "sources" as [] and "table" as null when not needed; leave "plan" as [] and "next" as "" when the task doesn't ask for a plan or part of an essay. total_marks must equal the sum of the question marks, and every question needs a success_criteria entry and a model_answers entry with the same number.`;
   function validate(format, d) {
     if (!d || typeof d !== "object") return "not an object";
-    if (format === "Review") return Array.isArray(d.summary) && d.summary.length ? null : "missing summary";
-    if (format === "Quiz") return Array.isArray(d.questions) && d.questions.length >= 15 ? null : "fewer than 15 questions";
+    const words = x => String(x == null ? "" : x).split(/\s+/).filter(Boolean).length;
+    if (format === "Review") {
+      if (!Array.isArray(d.summary) || !d.summary.length) return "missing summary";
+      const n = d.summary.reduce((a, s) => a + words(s.heading) + arr(s.paragraphs).reduce((b, p) => b + words(p), 0) + arr(s.bullets).reduce((b, p) => b + words(p), 0), 0)
+        + arr(d.key_terms).reduce((a, k) => a + words(k.term) + words(k.definition), 0) + arr(d.common_mistakes).reduce((a, m) => a + words(m), 0);
+      return n > 520 ? "too long for one page (" + n + " words)" : null;
+    }
+    if (format === "Quiz") {
+      if (!Array.isArray(d.questions) || d.questions.length < 15) return "fewer than 15 questions";
+      return d.questions.some(q => words(q.q) > 30 || words(q.a) > 22) ? "answers too long for one page" : null;
+    }
     if (!Array.isArray(d.questions) || !d.questions.length) return "no questions";
+    if (Array.isArray(d.model_answers) && d.model_answers.length) {
+      if (!Array.isArray(d.success_criteria) || !d.success_criteria.length) return "no success criteria";
+      return d.model_answers.every(m => m && typeof m.text === "string" && m.text.length > 200) ? null : "model answer too short";
+    }
     if (!Array.isArray(d.mark_scheme) || !d.mark_scheme.length) return "no mark scheme";
     return null;
   }
@@ -429,6 +451,7 @@ Leave "sources" as [] and "table" as null when not needed. total_marks must equa
   };
   const ytSearch = q => "https://www.youtube.com/results?search_query=" + encodeURIComponent(q);
   const marksLabel = (w, m) => w.board === "edexcel" ? `(${m})` : w.board === "aqa" ? `[${m} mark${m == 1 ? "" : "s"}]` : `[${m}]`;
+  const codeHTML = c => c ? `<pre class="code">${esc(c)}</pre>` : "";
   function tableHTML(t, cls) {
     if (!t || !arr(t.headers).length) return "";
     return `<div class="scroll"><table class="${cls || "qtable"}"><thead><tr>${arr(t.headers).map(h => `<th>${esc(h)}</th>`).join("")}</tr></thead><tbody>${arr(t.rows).map(r => `<tr>${arr(r).map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>`;
@@ -465,9 +488,7 @@ Leave "sources" as [] and "table" as null when not needed. total_marks must equa
     <div class="row"><button class="btn primary" type="button" id="recallStart">I'm ready: hide it and start writing</button></div>
     <div class="paper" id="recallBox" hidden>
       <h3>Write down everything you remember</h3>
-      <p class="small">Headings, lists, equations, quotations. Don't look back until the 15 minutes are up.</p>
-      <label for="recallText" class="small">Your recall</label>
-      <textarea id="recallText" placeholder="Start with the main idea, then add every detail you can..."></textarea>
+      <p>Write in your exercise book or on paper: headings, lists, equations, quotations. Don't look back until the 15 minutes are up.</p>
       <div class="row"><button class="btn" type="button" id="recallCheck">Show the summary to check</button></div>
       <p class="small" id="recallNote" hidden>Now compare. Add anything you missed in a different colour; those points go first in your next review.</p>
     </div>`;
@@ -513,15 +534,48 @@ Leave "sources" as [] and "table" as null when not needed. total_marks must equa
       ${d.timing_note ? `<p class="small">${esc(d.timing_note)}</p>` : ""}
       <p class="small">Write your answers on paper. There are no answer spaces on this sheet.</p>
       ${arr(d.sources).map(s => `<div class="source"><h4>${esc(s.label)}${s.title ? ": " + esc(s.title) : ""}</h4><p>${esc(s.text)}</p></div>`).join("")}
-      ${qs.map(q => `<div class="exq"><span class="num">${esc(q.number)}</span><div class="stack-s"><p>${esc(q.text)}</p>${tableHTML(q.table)}</div><span class="mk">${+q.marks ? marksLabel(w, +q.marks) : ""}</span></div>`).join("")}
+      ${qs.map(q => `<div class="exq"><span class="num">${esc(q.number)}</span><div class="stack-s"><p>${esc(q.text)}</p>${codeHTML(q.code)}${tableHTML(q.table)}</div><span class="mk">${+q.marks ? marksLabel(w, +q.marks) : ""}</span></div>`).join("")}
     </div>
-    <div class="flip"><button class="btn primary" type="button" id="flipBtn">Turn over: show the mark scheme</button></div>
+    ${arr(d.model_answers).length ? modelAnswerScreen(d) : `<div class="flip"><button class="btn primary" type="button" id="flipBtn">Turn over: show the mark scheme</button></div>
     <div class="paper" id="markScheme" hidden>
       <div class="qset-head"><h3>Mark scheme</h3><span class="small">Your score: <b id="scoreTotal">0</b> / ${total}</span></div>
       ${ms.map(m => `<div class="exq"><span class="num">${esc(m.number)}</span>
-        <div class="stack-s"><ul>${arr(m.points).map(p => `<li>${esc(p)}</li>`).join("")}</ul>${m.guidance ? `<p class="small">${esc(m.guidance)}</p>` : ""}</div>
+        <div class="stack-s"><ul>${arr(m.points).map(p => `<li>${esc(p)}</li>`).join("")}</ul>${m.guidance ? `<p class="small">${esc(m.guidance)}</p>` : ""}${codeHTML(m.code)}</div>
         <label class="score"><input type="number" min="0" max="${+m.marks || 0}" inputmode="numeric" data-score aria-label="Marks for ${esc(m.number)}"> / ${+m.marks || 0}</label></div>`).join("")}
+    </div>`}`;
+  }
+  const paras = t => String(t || "").split(/\n\s*\n/).map(p => `<p>${esc(p.trim())}</p>`).join("");
+  const multi = list => list.length > 1;
+  // Success criteria and model answer, shown after the student has written their answer.
+  function modelAnswerScreen(d) {
+    const sc = arr(d.success_criteria), ma = arr(d.model_answers), many = multi(sc) || multi(ma);
+    let n = 0;
+    return `<div class="flip"><button class="btn primary" type="button" id="flipBtn" data-flip="Turn over: success criteria and model answer">Turn over: success criteria and model answer</button></div>
+    <div id="markScheme" class="stack" hidden>
+      <div class="paper">
+        <div class="qset-head"><h3>Success criteria</h3><span class="small">Tick each one your answer meets: <b id="critCount">0</b> / <span id="critTotal"></span></span></div>
+        <p class="small">Check your answer against each statement. The ones you can't tick yet are your targets for next time.</p>
+        ${sc.map(c => `<div class="crit">${many ? `<h4>Question ${esc(c.number)}</h4>` : ""}${arr(c.groups).map(g => `<div class="critgroup"><b>${esc(g.heading)}</b>
+          ${arr(g.items).map(it => { n++; return `<label class="critrow"><input type="checkbox" data-crit id="crit-${n}"><span>${esc(it)}</span></label>`; }).join("")}</div>`).join("")}</div>`).join("")}
+      </div>
+      ${ma.map(m => `<div class="paper model">
+        <div class="qset-head"><h3>Model answer${many ? " · Question " + esc(m.number) : ""}</h3></div>
+        ${arr(m.plan).length ? `<div class="plan"><b>Plan</b><ul>${arr(m.plan).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        <div class="answer">${paras(m.text)}</div>
+        ${m.next ? `<p class="small next">${esc(m.next)}</p>` : ""}
+        ${arr(m.commentary).length ? `<div class="why"><b>Why this works</b><ul>${arr(m.commentary).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+      </div>`).join("")}
     </div>`;
+  }
+  function modelAnswerPrint(d) {
+    const sc = arr(d.success_criteria), ma = arr(d.model_answers), many = multi(sc) || multi(ma);
+    return `<h2>Success criteria</h2><p class="p-note">Tick each statement your answer meets. Any you can't tick are your targets for next time.</p>` +
+      sc.map(c => `<div class="p-crit">${many ? `<h3>Question ${esc(c.number)}</h3>` : ""}${arr(c.groups).map(g => `<p class="p-cg">${esc(g.heading)}</p><ul class="p-check">${arr(g.items).map(it => `<li>${esc(it)}</li>`).join("")}</ul>`).join("")}</div>`).join("") +
+      ma.map(m => `<section class="p-model"><h2>Model answer${many ? " · Question " + esc(m.number) : ""}</h2>
+        ${arr(m.plan).length ? `<div class="p-plan"><b>Plan</b><ul>${arr(m.plan).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}
+        <div class="p-answer">${paras(m.text)}</div>
+        ${m.next ? `<p class="p-note"><i>${esc(m.next)}</i></p>` : ""}
+        ${arr(m.commentary).length ? `<div class="p-why"><b>Why this works</b><ul>${arr(m.commentary).map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>` : ""}</section>`).join("");
   }
 
   function worksheetHTML(w, d) {
@@ -533,23 +587,24 @@ Leave "sources" as [] and "table" as null when not needed. total_marks must equa
     const head = `${esc(w.subjectLabel)} · ${esc(w.specLabel)}${w.tier ? " · " + esc(w.tier) : ""} · ${esc(w.format)} · 30 minutes`;
     let front = "", back = "";
     if (w.format === "Review") {
-      front = `<ol class="p-steps"><li>Read for 8 minutes.</li><li>Turn over and write everything you remember for 15 minutes.</li><li>Check and add what you missed in a different colour for 7 minutes.</li></ol>` +
+      front = `<p class="p-note"><b>Read</b> for 8 minutes. <b>Cover</b> the sheet and write everything you remember in your exercise book for 15 minutes. <b>Check</b> and add what you missed in a different colour for 7 minutes.</p>` +
         arr(d.summary).map(s => `<h3>${esc(s.heading)}</h3>${arr(s.paragraphs).map(p => `<p>${esc(p)}</p>`).join("")}${arr(s.bullets).length ? `<ul>${arr(s.bullets).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : ""}`).join("") +
         (arr(d.key_terms).length ? `<h3>Key terms</h3><table>${arr(d.key_terms).map(k => `<tr><th>${esc(k.term)}</th><td>${esc(k.definition)}</td></tr>`).join("")}</table>` : "") +
         (arr(d.common_mistakes).length ? `<h3>Common mistakes</h3><ul>${arr(d.common_mistakes).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : "");
-      back = `<h2>What I remember</h2><div class="p-lines"></div>`;
     } else if (w.format === "Quiz") {
       const qs = arr(d.questions).slice(0, 20);
       front = `<p class="p-note">Fold along the dashed line to hide the answers. Answer five at a time, check, and repeat any you got wrong.</p><table class="p-quiz"><thead><tr><th>#</th><th>Question</th><th class="ans">Answer</th></tr></thead><tbody>${qs.map((q, i) => `<tr class="${i % 5 === 0 && i ? "setbreak" : ""}"><td>${i+1}</td><td>${esc(q.q)}</td><td class="ans">${esc(q.a)}</td></tr>`).join("")}</tbody></table>`;
     } else {
       const total = +d.total_marks || arr(d.questions).reduce((a, q) => a + (+q.marks || 0), 0);
-      front = (d.timing_note ? `<p class="p-note">${esc(d.timing_note)}</p>` : "") + `<p class="p-note">Total ${total} marks. Answer on lined paper.</p>` +
+      front = (d.timing_note ? `<p class="p-note">${esc(d.timing_note)}</p>` : "") + `<p class="p-note">Total ${total} marks. Write your answers in your exercise book or on paper.</p>` +
         arr(d.sources).map(s => `<div class="p-src"><b>${esc(s.label)}${s.title ? ": " + esc(s.title) : ""}</b><p>${esc(s.text)}</p></div>`).join("") +
-        arr(d.questions).map(q => `<div class="p-q"><span class="qn">${esc(q.number)}</span><div><p>${esc(q.text)}</p>${tableHTML(q.table, "")}</div><span class="qm">${+q.marks ? marksLabel(w, +q.marks) : ""}</span></div>`).join("");
-      back = `<h2>Mark scheme</h2>` + arr(d.mark_scheme).map(m => `<div class="p-q"><span class="qn">${esc(m.number)}</span><div><ul>${arr(m.points).map(p => `<li>${esc(p)}</li>`).join("")}</ul>${m.guidance ? `<p class="p-note">${esc(m.guidance)}</p>` : ""}</div><span class="qm">${+m.marks || 0}</span></div>`).join("");
+        arr(d.questions).map(q => `<div class="p-q"><span class="qn">${esc(q.number)}</span><div><p>${esc(q.text)}</p>${codeHTML(q.code)}${tableHTML(q.table, "")}</div><span class="qm">${+q.marks ? marksLabel(w, +q.marks) : ""}</span></div>`).join("");
+      back = arr(d.model_answers).length ? modelAnswerPrint(d) : `<h2>Mark scheme</h2>` + arr(d.mark_scheme).map(m => `<div class="p-q"><span class="qn">${esc(m.number)}</span><div><ul>${arr(m.points).map(p => `<li>${esc(p)}</li>`).join("")}</ul>${m.guidance ? `<p class="p-note">${esc(m.guidance)}</p>` : ""}${codeHTML(m.code)}</div><span class="qm">${+m.marks || 0}</span></div>`).join("");
     }
-    return `<header class="p-head"><small>${head}</small><h1>${esc(w.topic)}</h1><small>${esc(w.unit)}</small></header>${front}` +
+    const html = `<header class="p-head"><small>${head}</small><h1>${esc(w.topic)}</h1><small>${esc(w.unit)}</small></header>${front}` +
       (back ? `<section class="p-reverse"><header class="p-head"><small>${head} · Reverse</small><h1>${esc(w.topic)}</h1></header>${back}</section>` : "");
+    // Review and Quiz must fit on one side of A4: the site scales this wrapper down if needed when printing.
+    return w.format === "Exam practice" ? html : `<div class="p-fit">${html}</div>`;
   }
 
   const api = { OTHER, defaultOpts, SUBJECTS, SUBJ, FORMATS, FORMAT_INFO, POEMS, pool, worksheetSpec, allWorksheets, buildPrompt, validate,

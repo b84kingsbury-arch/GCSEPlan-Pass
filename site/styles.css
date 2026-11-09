@@ -258,6 +258,7 @@ textarea{background:#fff;border:1px solid var(--grey);border-radius:var(--r);pad
 .qtable th{background:var(--brand);color:#fff;font-size:12.5px}
 .qtable td.n{color:var(--muted);width:2.5em}
 .scroll{overflow-x:auto}
+.code{font-family:"Cascadia Mono",Consolas,Menlo,monospace;font-size:13px;background:var(--blush-2);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin:0;overflow-x:auto;white-space:pre;line-height:1.5}
 .source{border-left:3px solid var(--brand);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:6px}
 .source p{white-space:pre-line}
 .exq{display:grid;grid-template-columns:52px minmax(0,1fr) auto;gap:10px;padding:12px 0;border-top:1px solid var(--line);align-items:start}
@@ -268,61 +269,109 @@ textarea{background:#fff;border:1px solid var(--grey);border-radius:var(--r);pad
 .exq .score input{width:3.4em;padding:3px 5px}
 @media (max-width:520px){.exq{grid-template-columns:40px minmax(0,1fr)}.exq .mk{grid-column:2}}
 .flip{display:flex;justify-content:center;padding:8px 0}
+.crit{display:flex;flex-direction:column;gap:10px}
+.crit h4{color:var(--brand-red)}
+.critgroup{display:flex;flex-direction:column;gap:4px;padding:10px 12px;background:var(--blush-2);border-radius:var(--r)}
+.critgroup>b{color:var(--brand);font-size:14px;margin-bottom:2px}
+.critrow{display:grid;grid-template-columns:20px 1fr;gap:8px;align-items:start;font-size:14px;cursor:pointer;padding:3px 0}
+.critrow input{margin-top:3px}
+.critrow:has(input:checked) span{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--grey-dark)}
+.model .plan{background:var(--blush-2);border-radius:var(--r);padding:10px 14px}
+.model .plan b,.model .why b{color:var(--brand)}
+.model .answer{display:flex;flex-direction:column;gap:12px;border-left:4px solid var(--brand);padding-left:16px}
+.model .answer p{max-width:70ch;line-height:1.6}
+.model .next{font-style:italic}
+.model .why{border-top:1px solid var(--line);padding-top:12px}
 .state{padding:28px 20px;text-align:center;display:flex;flex-direction:column;gap:10px;align-items:center}
 .small{font-size:12.5px;color:var(--muted)}
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 
-/* ---------- print ---------- */
+/* ---------- print ----------
+   Print layout rules apply to #printArea (what is printed) and to .parea (an off-screen copy the site
+   measures to work out page counts before printing). #printArea itself is only shown when printing. */
 #printArea{display:none}
+:is(#printArea,.parea){font-family:var(--f-body);font-size:11pt;line-height:1.35;color:#111;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.parea{position:absolute;left:-99999px;top:0;width:182mm;visibility:hidden;pointer-events:none}
+/* worksheets (portrait) */
+.p-head{border-bottom:3px solid var(--brand);padding-bottom:4px;margin-bottom:10px}
+.p-head small{font-size:9pt;color:var(--brand);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
+.p-head h1{font-size:18pt;margin:2px 0 0;color:var(--brand-red)}
+:is(#printArea,.parea) h2{font-size:14pt;margin:0 0 8px;color:var(--brand-red)}
+:is(#printArea,.parea) h3{font-size:12pt;margin:12px 0 4px;color:var(--brand-red)}
+:is(#printArea,.parea) p{margin:0 0 6px}
+:is(#printArea,.parea) ul,:is(#printArea,.parea) ol{margin:0 0 6px;padding-left:18px}
+:is(#printArea,.parea) table{border-collapse:collapse;width:100%;margin:6px 0}
+:is(#printArea,.parea) th,:is(#printArea,.parea) td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}
+:is(#printArea,.parea) .p-quiz th,:is(#printArea,.parea) .p-quiz td{padding:2.5px 5px;font-size:9.5pt;line-height:1.3}
+.p-quiz td:first-child{width:6mm}
+.p-quiz .ans{width:42%;border-left:2px dashed #111!important}
+.p-quiz .setbreak td{border-top:2px solid #111}
+.p-q{display:grid;grid-template-columns:14mm 1fr auto;gap:4mm;padding:4px 0;border-top:1px solid #ccc;break-inside:avoid}
+.p-q .qn{font-weight:bold}
+.p-q p{white-space:pre-line}
+.p-q .qm{font-size:10pt;white-space:nowrap}
+.p-src{border-left:3px solid #999;padding-left:8px;margin:6px 0}
+.p-src p{white-space:pre-line}
+.p-note{font-size:10pt;color:#333}
+.p-reverse{break-before:page}
+:is(#printArea,.parea) pre.code{font-family:"Cascadia Mono",Consolas,"DejaVu Sans Mono",monospace;font-size:8.5pt;background:#F6F6F6;border:1px solid #ccc;padding:2mm 3mm;margin:1.5mm 0;white-space:pre;break-inside:avoid;line-height:1.4}
+.p-cg{font-weight:700;color:var(--brand);margin:6px 0 2px!important;font-size:10pt}
+:is(#printArea,.parea) ul.p-check{list-style:none;padding-left:0;margin:0 0 4px}
+.p-check li{position:relative;padding-left:6mm;font-size:10pt;margin-bottom:1mm}
+.p-check li::before{content:"";position:absolute;left:0;top:.5mm;width:3.2mm;height:3.2mm;border:1px solid #555;border-radius:.6mm}
+.p-model{margin-top:5mm}
+.p-plan{background:var(--blush-2);padding:2mm 3mm;border-radius:1mm;margin-bottom:3mm;font-size:10pt}
+.p-answer{border-left:2px solid var(--brand);padding-left:4mm}
+.p-answer p{white-space:pre-line;line-height:1.45;margin:0 0 3mm!important}
+.p-why{margin-top:3mm;font-size:10pt;border-top:1px solid #ccc;padding-top:2mm}
+.p-crit h3{margin-top:4mm!important}
+/* weekly plan (one landscape page) */
+.pp{display:flex;flex-direction:column;gap:3mm;height:190mm}
+.pp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:6mm;background:var(--brand);color:#fff;padding:3mm 5mm;border-radius:2mm}
+.pp-head small{font-size:7.5pt;letter-spacing:.2em;text-transform:uppercase;font-weight:700;opacity:.85}
+.pp-head h1{margin:0;font-size:15pt;color:#fff}
+.pp-meta{font-size:9pt;text-align:right}
+.pp-meta b{font-size:12pt;letter-spacing:.12em}
+.pp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2mm;flex:1;min-height:0}
+.pp-day{background:var(--blush);border-radius:1.5mm;padding:0 0 1.5mm;display:flex;flex-direction:column;gap:1.2mm;overflow:hidden}
+.pp-dh{background:var(--brand);color:#fff;padding:1.2mm 2mm;display:flex;justify-content:space-between;align-items:baseline;font-size:9pt}
+.pp-dh span{font-size:7.5pt;opacity:.85}
+.pp-b{position:relative;background:#fff;margin:0 1.5mm;border-left:3mm solid #999;border-radius:1mm;padding:1.2mm 6mm 1.2mm 1.8mm;display:flex;flex-direction:column;break-inside:avoid}
+.pp-c{margin:0 1.5mm;padding:1mm 1.8mm;border:1px dashed #aaa;border-radius:1mm;color:#555;display:flex;flex-direction:column}
+.pp-t{font-weight:800}
+.pp-s{font-weight:700}
+.pp-f{color:#6B5056}
+.pp-tick{position:absolute;right:1.5mm;top:1.5mm;width:3.2mm;height:3.2mm;border:1px solid #555;border-radius:.6mm;background:#fff}
+.pp-off{font-style:italic;color:#6B5056;text-align:center;padding:2mm}
+.pp-size-m .pp-b,.pp-size-m .pp-c{font-size:8.5pt}
+.pp-size-s .pp-b,.pp-size-s .pp-c{font-size:7pt}
+.pp-size-xs .pp-b,.pp-size-xs .pp-c{font-size:6pt}
+.pp-foot{display:flex;justify-content:space-between;gap:6mm;font-size:8pt;color:#6B5056}
+.pp-key{display:flex;gap:4mm;flex-wrap:wrap}
+.pp-key i{display:inline-block;width:3mm;height:3mm;border-radius:.5mm;margin-right:1mm;vertical-align:-.3mm}
+/* print pack: cover checklist and padding pages */
+.pk-sheet{break-before:page}
+.pk-head{background:var(--brand);color:#fff;padding:4mm 5mm;border-radius:2mm;margin-bottom:4mm}
+.pk-head small{font-size:8pt;letter-spacing:.2em;text-transform:uppercase;font-weight:700;opacity:.85}
+.pk-head h1{margin:1mm 0 0;font-size:18pt;color:#fff}
+.pk-head p{margin:1mm 0 0!important;font-size:10pt}
+:is(#printArea,.parea) .pk-table td,:is(#printArea,.parea) .pk-table th{font-size:9pt;padding:2px 5px;line-height:1.25}
+.pk-table td:first-child,.pk-table td:nth-child(4){white-space:nowrap}
+:is(#printArea,.parea) .pk-table th{background:var(--brand);color:#fff}
+.pk-table .pk-tick{width:8mm;text-align:center}
+.pk-table .pk-tick i{display:inline-block;width:3.6mm;height:3.6mm;border:1px solid #555;border-radius:.6mm}
+.pk-sw{display:inline-block;width:2.6mm;height:2.6mm;border-radius:.5mm;margin-right:1.5mm;vertical-align:-.2mm}
+.pk-day td{background:var(--blush);font-weight:700;color:var(--brand)}
+.pk-missing{border:1px dashed #A71426;padding:2mm 3mm;border-radius:1mm;font-size:9.5pt;margin-top:3mm}
+.pk-when{font-size:8.5pt;font-weight:700;color:var(--muted);text-align:right;margin-bottom:-4mm}
+.btn.primary-soft{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn.primary-soft:hover{background:var(--brand-deep);color:#fff}
+.packopts{border:none;padding:0;margin:0;display:flex;flex-direction:column;gap:10px}
+.packopts .toggle{align-items:flex-start;color:var(--ink);font-weight:400}
+.packopts .toggle input{margin-top:3px;flex:none}
+.pk-blank{height:240mm;display:flex;align-items:center;justify-content:center;color:#999;font-size:9pt}
 @media print{
-  body{background:#fff;color:#111;font-size:11pt}
+  body{background:#fff;color:#111}
   body>*:not(#printArea){display:none!important}
-  #printArea{display:block;font-family:var(--f-body);line-height:1.35;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  /* worksheets (portrait) */
-  .p-head{border-bottom:3px solid var(--brand);padding-bottom:4px;margin-bottom:10px}
-  .p-head small{font-size:9pt;color:var(--brand);text-transform:uppercase;letter-spacing:.12em;font-weight:700}
-  .p-head h1{font-size:18pt;margin:2px 0 0;color:var(--brand-red)}
-  #printArea h2{font-size:14pt;margin:0 0 8px;color:var(--brand-red)}
-  #printArea h3{font-size:12pt;margin:12px 0 4px;color:var(--brand-red)}
-  #printArea p{margin:0 0 6px}
-  #printArea ul,#printArea ol{margin:0 0 6px;padding-left:18px}
-  #printArea table{border-collapse:collapse;width:100%;margin:6px 0}
-  #printArea th,#printArea td{border:1px solid #999;padding:4px 6px;text-align:left;vertical-align:top}
-  #printArea .p-quiz th,#printArea .p-quiz td{padding:2.5px 5px;font-size:9.5pt;line-height:1.3}
-  .p-quiz td:first-child{width:6mm}
-  .p-quiz .ans{width:42%;border-left:2px dashed #111!important}
-  .p-quiz .setbreak td{border-top:2px solid #111}
-  .p-q{display:grid;grid-template-columns:14mm 1fr auto;gap:4mm;padding:4px 0;border-top:1px solid #ccc;break-inside:avoid}
-  .p-q .qn{font-weight:bold}
-  .p-q p{white-space:pre-line}
-  .p-q .qm{font-size:10pt;white-space:nowrap}
-  .p-src{border-left:3px solid #999;padding-left:8px;margin:6px 0}
-  .p-src p{white-space:pre-line}
-  .p-note{font-size:10pt;color:#333}
-  .p-reverse{break-before:page}
-  .p-lines{height:225mm;background:repeating-linear-gradient(transparent 0 9mm,#bbb 9mm calc(9mm + 1px))}
-  /* weekly plan (one landscape page) */
-  .pp{display:flex;flex-direction:column;gap:3mm;height:190mm}
-  .pp-head{display:flex;justify-content:space-between;align-items:flex-end;gap:6mm;background:var(--brand);color:#fff;padding:3mm 5mm;border-radius:2mm}
-  .pp-head small{font-size:7.5pt;letter-spacing:.2em;text-transform:uppercase;font-weight:700;opacity:.85}
-  .pp-head h1{margin:0;font-size:15pt;color:#fff}
-  .pp-meta{font-size:9pt;text-align:right}
-  .pp-meta b{font-size:12pt;letter-spacing:.12em}
-  .pp-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2mm;flex:1;min-height:0}
-  .pp-day{background:var(--blush);border-radius:1.5mm;padding:0 0 1.5mm;display:flex;flex-direction:column;gap:1.2mm;overflow:hidden}
-  .pp-dh{background:var(--brand);color:#fff;padding:1.2mm 2mm;display:flex;justify-content:space-between;align-items:baseline;font-size:9pt}
-  .pp-dh span{font-size:7.5pt;opacity:.85}
-  .pp-b{position:relative;background:#fff;margin:0 1.5mm;border-left:3mm solid #999;border-radius:1mm;padding:1.2mm 6mm 1.2mm 1.8mm;display:flex;flex-direction:column;break-inside:avoid}
-  .pp-c{margin:0 1.5mm;padding:1mm 1.8mm;border:1px dashed #aaa;border-radius:1mm;color:#555;display:flex;flex-direction:column}
-  .pp-t{font-weight:800}
-  .pp-s{font-weight:700}
-  .pp-f{color:#6B5056}
-  .pp-tick{position:absolute;right:1.5mm;top:1.5mm;width:3.2mm;height:3.2mm;border:1px solid #555;border-radius:.6mm;background:#fff}
-  .pp-off{font-style:italic;color:#6B5056;text-align:center;padding:2mm}
-  .pp-size-m .pp-b,.pp-size-m .pp-c{font-size:8.5pt}
-  .pp-size-s .pp-b,.pp-size-s .pp-c{font-size:7pt}
-  .pp-size-xs .pp-b,.pp-size-xs .pp-c{font-size:6pt}
-  .pp-foot{display:flex;justify-content:space-between;gap:6mm;font-size:8pt;color:#6B5056}
-  .pp-key{display:flex;gap:4mm;flex-wrap:wrap}
-  .pp-key i{display:inline-block;width:3mm;height:3mm;border-radius:.5mm;margin-right:1mm;vertical-align:-.3mm}
+  #printArea{display:block}
 }
